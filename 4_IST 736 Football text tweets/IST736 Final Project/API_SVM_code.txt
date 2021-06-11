@@ -1,0 +1,1032 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Dec 12 18:23:37 2020
+
+@author: CBeach
+"""
+
+import requests
+import pandas as pd
+
+BaseSchedule = 'https://profootballapi.com/schedule'
+BaseGame = 'https://profootballapi.com/game'
+BaseTeams = 'https://profootballapi.com/teams'
+BasePlays = 'https://profootballapi.com/plays'
+BasePlayers = 'https://profootballapi.com/players'
+
+# PFAkey = "api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i"
+PFAkeyREG2020 = 
+# key = "api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i&season_type=REG"
+key = "api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i&stats_type=offense&year=2019&player_name=P.Mahomes&season_type=REG"
+key = "api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i&stats_type=offense&year=2019&season_type=REG"
+PFAkeyREG2020Off = "api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i&year=2020&season_type=REG&stats_type=offense"
+# PFA_dict = {'apiKey':'KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i'}
+
+##Example Code
+# response = requests.post(BaseSchedule, data=PFA_dict)
+# response = requests.get(BaseSchedule, params=PFAkey)
+# response = requests.post(BaseSchedule, data="api_key=KmSJT6b3UwyHehuv9tNkYaQCoqxFLp5i")
+
+#This works and pulls in all games back until 2009
+# response = requests.post(BaseSchedule, params=key)
+PlayersOffense = requests.post(BasePlayers, params=key)
+
+
+#Attempting to pull games for this year and regular season only
+# response = requests.post(BaseSchedule, params=PFAkeyREG2020)
+
+# print(response)
+# print(dir(response))
+# print(response.json())
+# print(response.text)
+# print(response.url)
+# print(response.headers)
+
+print(PlayersOffense.json())
+print(PlayersOffense)
+print(PlayersOffense.status_code)
+print(PlayersOffense.text)
+
+## Didn't use this code
+# MyFILE=open("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\ScheduleTest.csv","w")
+# ### Place the column names in - write to the first row
+# WriteThis="ID, Home, Away, Day, Month, Time, Season Type, Week, Year, Final, Home Score, Away Score"
+# MyFILE.write(WriteThis)
+# MyFILE.close()
+
+
+# print(response.json())
+# schedule_dict = response.json()
+
+offense_list = PlayersOffense.json()
+# list(offense_list)
+# len(offense_list)
+# type(offense_list)
+
+# print(offense_list['2019090802'])
+# print(offense_list['2019090802']['00-0033873'])
+# print(offense_list['2019090802']['00-0033873']['passing'])
+# print(offense_list['2019090802']['00-0033873']['passing']['name'])
+
+# fields = [ 'Game ID', 'Player ID', 'Stat Type', "Stat Name", 'Stat Value' ]
+# type(offense_list)
+dw = offense_list
+
+import csv
+import itertools
+import sys
+
+# with open("test_output.csv", "w") as f:
+#     w = csv.DictWriter(f, fields)
+#     w.writeheader()
+#     for k in dw:
+#         w.writerow({field: dw[k].get(field) or k for field in fields})
+        
+
+# for k, j in dw.items():
+#     print(dw[k][j])
+    
+# for k in dw.items():
+#     print(k)
+    
+    
+# for k in dw:
+#     print(dw[k])
+        
+GameID = []
+PlayerID = []
+StatType = []
+StatName = []
+StatValue = []
+    
+for j in dw:
+    for k in dw[j]:
+        for l in dw[j][k]:
+            for m in dw[j][k][l]:
+                GameID.append(j)
+                PlayerID.append(k)
+                StatType.append(l)
+                StatName.append(m)
+            for n in dw[j][k][l].values():
+                StatValue.append(n)
+
+print(GameID)
+len(GameID)
+print(PlayerID)
+len(PlayerID)
+print(StatType)
+len(StatType)
+print(StatName)
+len(StatName)
+print(StatValue)
+len(StatValue)
+
+GameIDdf = pd.DataFrame(GameID)
+DF1col = {0:'Game ID'}
+GameIDdf = GameIDdf.rename(columns=DF1col)
+
+PlayerIDdf = pd.DataFrame(PlayerID)
+DF2col = {0:'Player ID'}
+PlayerIDdf = PlayerIDdf.rename(columns=DF2col)
+
+StatTypedf = pd.DataFrame(StatType)
+DF3col = {0:'Stat Type'}
+StatTypedf = StatTypedf.rename(columns=DF3col)
+
+StatNamedf = pd.DataFrame(StatName)
+DF4col = {0:'Stat Name'}
+StatNamedf = StatNamedf.rename(columns=DF4col)
+
+StatValuedf = pd.DataFrame(StatValue)
+DF5col = {0:'Stat Value'}
+StatValuedf = StatValuedf.rename(columns=DF5col)
+
+StatsDF = pd.merge(GameIDdf, PlayerIDdf, left_index=True, right_index=True)
+StatsDF = pd.merge(StatsDF, StatTypedf, left_index=True, right_index=True )
+StatsDF = pd.merge(StatsDF, StatNamedf, left_index=True, right_index=True )
+StatsDF = pd.merge(StatsDF, StatValuedf, left_index=True, right_index=True )
+
+print(StatsDF)
+
+StatsDF['Stats ID'] = StatsDF['Stat Type'] + " " + StatsDF['Stat Name']
+
+StatsDF.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\AllPlayersStats2019.csv")
+
+# iter(offense_list)
+
+# offense_list2 = []
+
+# for item in offense_list.values():
+#     print(item)
+
+# print(offense_list)
+
+##Me discovering that the JSON object is dictionaries within a list
+
+##This code returns a single dictionary
+# testgame=schedule_dict[1]
+# testgame
+# type(testgame)
+
+##This code returns multiple dictionaries with a list type
+# testgame2=schedule_dict[0:3]
+# len(testgame2)
+# type(testgame2)
+# print(testgame2)
+
+# print(offense_list[1])
+# len(offense_list)
+# type(offense_list)
+
+##Testing Dictionary Iterrable functionality
+# for item in testgame.items():
+#     print(item)
+    
+# for item in testgame.values():
+#     print(item)
+    
+# for item in testgame.keys():
+#     print(item)
+
+# ## Create empty lists to populate while iterating    
+# ID = []
+# Home = []
+# Away = []
+# Day = []
+
+
+# ## Iterate through list of dictionaries and append field to list
+# for item in testgame2:
+#     ID.append(item['id'])
+#     Home.append(item['home'])
+#     Away.append(item['away'])
+#     Day.append(item['day'])
+    
+# ## Double check the data that it looks correct
+# print(ID)
+# print(Home)
+# print(Away)
+# print(Day)
+
+# ## Make Lists into DataFrames
+# ID_DF = pd.DataFrame(ID)
+# Home_DF = pd.DataFrame(Home)
+# Away_DF = pd.DataFrame(Away)
+# Day_DF = pd.DataFrame(Day)
+
+# ## Merge the dataframes into one big DataFrame
+# DF=pd.merge(ID_DF, Home_DF,left_index=True, right_index=True)
+# DFcol = {'0_x':'ID', '0_y':'Home'}
+# DF = DF.rename(columns=DFcol)
+
+# DF=pd.merge(DF, Away_DF, left_index=True, right_index=True)
+# DFcol = {0:'Away'}
+# DF = DF.rename(columns=DFcol)
+# print(DF)
+
+# DF=pd.merge(DF, Day_DF, left_index=True, right_index=True)
+# DFcol = {0:'Day'}
+# DF = DF.rename(columns=DFcol)
+# print(DF)
+
+
+#Example Schedule Response
+#{'id': 2014112300, 'home': 'ATL', 'away': 'CLE', 'day': 23, 'month': 11, 'time': 1416722400, 'season_type': 'REG', 'week': 12, 'year': '2014', 'final': 1, 'home_score': 24, 'away_score': 26}
+
+StatsPath = "C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\AllPlayersStats2019.xlsx"
+
+Stats = pd.read_excel(StatsPath, sheet_name=0)
+
+print(Stats)
+
+dir(gen_rule_payload)
+help(gen_rule_payload)
+
+namelist = []
+tweetlist = []
+alllist = []
+
+namelistT = []
+tweetlistT = []
+alllistT = []
+
+for row, column in Stats.iterrows():
+    name = column[1]
+    date_until = column[3]
+    date_from = column[4]
+    filter_rt = " -is:retweet"
+    lang_en = " lang:en"
+    filter_media = " -has:videos"
+    quote = " -is:quote"
+    reply = " -is:reply"
+    search_words = name+filter_rt+lang_en+filter_media+quote+reply
+    # print(search_words)
+    
+    rule = gen_rule_payload(search_words,
+                        results_per_call=500,
+                        to_date="2019-10-30",
+                        from_date="2019-10-01"
+                        )
+
+    tweetsVar = collect_results(rule,
+                         max_results=500,
+                         result_stream_args=premium_search_args) 
+    
+    for tweet in tweetsVar:
+        namelistT.append(name)
+        tweetlistT.append(tweet.all_text)
+        alllistT.append(tweet)
+
+print(tweetlist)
+len(tweetlist)
+
+print(namelist)
+len(namelist)
+
+print(alllist)
+len(alllist)
+
+print(tweetlistT)
+len(tweetlistT)
+
+print(namelistT)
+len(namelistT)
+
+print(alllistT)
+len(alllistT)
+
+tweetdf = pd.DataFrame(tweetlist)
+namedf = pd.DataFrame(namelist)
+
+tweetcol = {0:'Tweets'}
+namecol = {0:'Name'}
+
+tweetdf = tweetdf.rename(columns=tweetcol)
+namedf = namedf.rename(columns=namecol)
+
+print(tweetdf)
+print(namedf)
+
+alltweetsdf = pd.merge(namedf, tweetdf, left_index=True, right_index=True)
+
+print(alltweetsdf)
+
+alltweetsdf.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\AllTweets2019.csv")
+
+
+import nltk
+import pandas as pd
+import sklearn
+from sklearn.feature_extraction.text import CountVectorizer
+#Convert a collection of raw documents to a matrix of TF-IDF features.
+#Equivalent to CountVectorizer but with tf-idf norm
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.tokenize import word_tokenize
+## For Stemming
+from nltk.stem import PorterStemmer
+from nltk.tokenize import sent_tokenize, word_tokenize
+import os
+import csv
+import re  
+
+#### Load in Data ######
+
+path="/Users/Brian/Documents/Syracuse/IST_736_Text_Mining/Project/AllTweets2019v2.csv"
+
+Name_Label =[]
+Position_Label =[]
+SeasonGrade_Label = []
+PositiveScore = []
+NegativeScore = []
+Tweet_List = []
+
+
+with open(path, encoding="utf8") as csvfile:
+    read_csv = csv.reader(csvfile, delimiter=',')
+    for row in read_csv:
+        Name_Label.append(row[1])
+        Position_Label.append(row[2])
+        SeasonGrade_Label.append(row[3])
+        PositiveScore.append(row[4])
+        NegativeScore.append(row[5])
+        Tweet_List.append(row[6])
+       
+#### Validate Data Load ######
+      
+print(Name_Label)
+len(Name_Label)
+print(Position_Label)
+len(Position_Label)
+print(SeasonGrade_Label)
+len(SeasonGrade_Label)
+print(PositiveScore)
+len(PositiveScore)
+print(NegativeScore)
+len(NegativeScore)
+print(Tweet_List)
+len(Tweet_List)
+
+#### Create function that removes Emojis ######
+
+def deEmojify(text):
+    regrex_pattern = re.compile(pattern = "["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags = re.UNICODE)
+    return regrex_pattern.sub(r'',text)
+
+#### Clean Tweets ######
+
+Review_List = []
+
+for item in Tweet_List:
+    item = str(item)
+    item = item.upper()
+    item = item.replace("!", "")
+    item = item.replace(".", "")
+    item = item.replace("\\", "")
+    item = item.replace("'", "")
+    item = item.replace(",", "")
+    item = item.replace("(", "")
+    item = item.replace(")", "")
+    item = item.replace("?", "")
+    item = item.replace("-", "")
+    item = item.replace("+", "")
+    item = item.replace("[", "")
+    item = item.replace("]", "")
+    item = item.replace(":", "")
+    item = item.replace('"','')
+    item = item.replace('@','')
+    item = item.replace('#','')
+    item = item.replace('%','')
+    item = item.replace('/','')
+    item = item.replace('&','')
+    item = item.replace("1","")
+    item = item.replace("2","")
+    item = item.replace("3","")
+    item = item.replace("4","")
+    item = item.replace("5","")
+    item = item.replace("6","")
+    item = item.replace("7","")
+    item = item.replace("8","")
+    item = item.replace("9","")
+    item = item.replace("0","")
+    item = item.replace("\n", "")
+    item = deEmojify(item)
+    item = item.replace("AARON", "")
+    item = item.replace("RODGERS", "")
+    item = item.replace("MITCH", "")
+    item = item.replace("TRUBISKY", "")
+    item = item.replace("AJ", "")
+    item = item.replace("BROWN", "")
+    item = item.replace("DERRICK", "")
+    item = item.replace("HENRY", "")
+    item = item.replace("LEONARD", "")
+    item = item.replace("FOURNETTE", "")
+    item = item.replace("PATRICK", "")
+    item = item.replace("MAHOMES", "")
+    item = item.replace("TYREEK", "")
+    item = item.replace("HILL", "")
+    item = item.replace("DEVANTE", "")
+    item = item.replace("PARKER", "")
+    item = item.replace("MIKE", "")
+    item = item.replace("GESICKI", "")
+    item = item.replace("AUSTIN", "")
+    item = item.replace("HOOPER", "")
+    item = item.replace("STEFON", "")
+    item = item.replace("DIGGS", "")
+    item = item.replace("LEVEON", "")
+    item = item.replace("BELL", "")
+    item = item.replace("DALLAS", "")
+    item = item.replace("GOEDERT", "")
+    item = item.replace("TERRY", "")
+    item = item.replace("MCLAURIN", "")
+    item = item.replace("ZACH", "")
+    item = item.replace("ERTZ", "")
+    item = item.replace("DANIEL", "")
+    item = item.replace("JONES", "")
+    item = item.replace("DAK", "")
+    item = item.replace("PRESCOTT", "")
+    item = item.replace("JAMES", "")
+    item = item.replace("CONNER", "")
+    item = item.replace("JULIAN", "")
+    item = item.replace("EDELMAN", "")
+    item = item.replace("SONY", "")
+    item = item.replace("MICHEL", "")
+    item = item.replace("TOM", "")
+    item = item.replace("BRADY", "")
+    item = item.replace("JARED", "")
+    item = item.replace("COOK", "")
+    item = item.replace("MICHAEL", "")
+    item = item.replace("THOMAS", "")
+    item = item.replace("DARREN", "")
+    item = item.replace("WALLER", "")
+    item = item.replace("QUARTERBACK", "")
+    item = item.replace("QB", "")
+    item = item.replace("WR", "")
+    item = item.replace("WIDE", "")
+    item = item.replace("RECEIVER", "")
+    item = item.replace("RB", "")
+    item = item.replace("RUNNING", "")
+    item = item.replace("BACK", "")
+    item = item.replace("RUNNINGBACK", "")
+    item = item.replace("TIGHT", "")
+    item = item.replace("END", "")
+    item = item.replace("KELCE", "")
+    item = item.replace("TRAVIS", "")
+    item = item.replace("CHRISTIAN", "")
+    item = item.replace("MCCAFFREY", "")
+    item = item.replace("VEON", "")
+    item = item.replace("LE", "")
+    Review_List.append(item)
+    
+print(Review_List)
+
+
+##### Clean up Labels ##### 
+
+name_df = pd.DataFrame(Name_Label[1:])
+position_df = pd.DataFrame(Position_Label[1:])
+seasongrade_df = pd.DataFrame(SeasonGrade_Label[1:])
+
+name_df
+position_df
+seasongrade_df
+
+namecol = {0:'Name'}
+positioncol = {0:'Position'}
+seasoncol = {0: 'Season Grade'}
+
+name_df = name_df.rename(columns=namecol)
+position_df = position_df.rename(columns=positioncol)
+seasongrade_df = seasongrade_df.rename(columns=seasoncol)
+
+##### CountVectorizer Config Area ##### 
+
+
+# MyCV = CountVectorizer()
+# config = "CV - Basic"
+
+MyCV = CountVectorizer(input='content',
+                      analyzer= 'word',
+                      stop_words='english',
+                       lowercase=True)
+config = "CV - Stopwords Only"
+
+#MyCV = CountVectorizer(input = 'content',
+#                       analyzer='word', 
+#                       stop_words='english',
+#                       lowercase=True,
+#                       binary=True)
+#config="CV - Boolean Vector"
+
+# MyCV = CountVectorizer(stop_words='english'
+#                         , tokenizer=STEMMER
+#                         , lowercase=True)
+
+
+# MyCV = TfidfVectorizer()
+# config = "TFIDF - Basic"
+
+#MyCV = TfidfVectorizer(input='content', 
+#                       analyzer='word', 
+#                       stop_words='english',
+#                       lowercase=True)
+#config = "TFIDF - Stopwords Only"
+
+
+# MyCV = TfidfVectorizer(stop_words='english'
+#                        , tokenizer=STEMMER
+#                        , lowercase=True)
+    
+##### DTM Config Area ##### 
+
+Player_Tweets=MyCV.fit_transform(Review_List)
+Player_col=MyCV.get_feature_names()
+Player_corpus=pd.DataFrame(Player_Tweets.toarray(),columns=Player_col)
+
+Player_CV = pd.merge(name_df, Player_corpus,left_index=True, right_index=True)
+Player_CV = pd.merge(position_df, Player_CV,left_index=True, right_index=True)
+Player_CV = pd.merge(seasongrade_df, Player_CV,left_index=True, right_index=True)
+
+print(Player_CV)
+print(seasongrade_df)
+
+##### Create unique copy of DTM
+
+MyCV_NoSW_Lowercase = Player_CV
+
+###### Brian
+
+######## Making SeasonCV
+SeasonCV = Player_CV.copy()
+SeasonCV = SeasonCV.drop('Name', 1)
+SeasonCV = SeasonCV.drop('Position', 1)
+print(SeasonCV)
+
+### Making Position DF
+PositionCV = Player_CV.copy()
+PositionCV = PositionCV.drop('Name', 1)
+PositionCV = PositionCV.drop('Season Grade', 1)
+print(PositionCV)
+
+##### making NameCV
+NameCV = Player_CV.copy()
+NameCV = NameCV.drop('Position', 1)
+NameCV = NameCV.drop('Season Grade', 1)
+print(NameCV)
+
+##### Test vs Train Split ##### 
+
+from sklearn.model_selection import train_test_split
+# managing labels
+# Splitting Season DFs
+SeasonTrainDF, SeasonTestDF = train_test_split(SeasonCV, test_size=0.3)
+SeasonTestLabels = SeasonTestDF["Season Grade"]
+SeasonTestDF = SeasonTestDF.drop(["Season Grade"], axis=1)
+SeasonTrainLabels = SeasonTrainDF["Season Grade"]
+SeasonTrainNoLabelsDF = SeasonTrainDF.drop(["Season Grade"], axis=1)
+#print(SeasonTestLabels)
+#print(SeasonTestDF)
+#print(SeasonTrainLabels)
+#print(SeasonTrainNoLabelsDF)
+#print(SeasonTrainDF)
+
+# Splitting Position DFs
+PositionTrainDF, PositionTestDF = train_test_split(PositionCV, test_size=0.3)
+PositionTestLabels = PositionTestDF["Position"]
+PositionTestDF = PositionTestDF.drop(["Position"], axis=1)
+PositionTrainLabels = PositionTrainDF["Position"]
+PositionTrainNoLabelsDF = PositionTrainDF.drop(["Position"], axis=1)
+#print(PositionTestLabels)
+#print(PositionTestDF)
+#print(PositionTrainLabels)
+#print(PositionTrainNoLabelsDF)
+#print(PositionTrainDF)
+
+# Splitting Name DFs
+NameTrainDF, NameTestDF = train_test_split(NameCV, test_size=0.3)
+NameTestLabels = NameTestDF["Name"]
+NameTestDF = NameTestDF.drop(["Name"], axis=1)
+NameTrainLabels = NameTrainDF["Name"]
+NameTrainNoLabelsDF = NameTrainDF.drop(["Name"], axis=1)
+#print(NameTestLabels)
+#print(NameTestDF)
+#print(NameTrainLabels)
+#print(NameTrainNoLabelsDF)
+#print(NameTrainDF)
+
+def important_features(vectorizer,classifier,n):
+    class_labels = classifier.classes_
+    feature_names =vectorizer.get_feature_names()
+    numlabels = (len(class_labels))
+    for i in range(0, numlabels):
+        topnclass = sorted(zip(classifier.feature_count_[i], feature_names),reverse=True)[:n]
+        print("Important words in label:", class_labels[i])
+        for coef, feat in topnclass:
+            print(coef, feat)
+        print("-----------------------------------------")
+        
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import confusion_matrix
+from sklearn import metrics
+import numpy as np
+
+MyModelNB= MultinomialNB()
+def doNB(trainnolabels, trainonlylabels, testdata, testonlylabels, vectorizer, n):
+    Prediction = MyModelNB.fit(trainnolabels, trainonlylabels).predict(testdata)
+    print("The prediction from NB is:")
+    print(Prediction)
+    print("The actual labels are:")
+    print(testonlylabels)
+    cnf_matrix = confusion_matrix(testonlylabels, Prediction)
+    print("The confusion matrix is:")
+    print(cnf_matrix)
+    print("Accuracy:",metrics.accuracy_score(testonlylabels, Prediction))
+    ### prediction probabilities
+    ## columns are the labels in alphabetical order
+    ## The decinal in the matrix are the prob of being
+    ## that label
+    #print("False True")
+    print(np.round(MyModelNB.predict_proba(testdata),2))
+    important_features(vectorizer, MyModelNB, n)
+
+from sklearn.naive_bayes import BernoulliNB    
+BernModel = BernoulliNB()
+def doBN(trainnolabels, trainonlylabels, testdata, testonlylabels, vectorizer, n):
+    BernModel.fit(trainnolabels, trainonlylabels)
+    ##BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
+    print("\nBernoulli prediction:\n")
+    Prediction=BernModel.predict(testdata)
+    print("\nActual:")
+    print(testonlylabels)
+    print("\nThe prediction\n")
+    print(Prediction)
+    #
+    bn_matrix = confusion_matrix(testonlylabels, Prediction)
+    print("\nThe confusion matrix is:")
+    print(bn_matrix)
+    print("Accuracy:",metrics.accuracy_score(testonlylabels, Prediction))
+    #print("False True")
+    print(np.round(BernModel.predict_proba(testdata),2))
+    important_features(vectorizer, BernModel, n)
+
+#"CV - Stopwords Only"
+doNB(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doNB(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doNB(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)
+
+#"CV - Boolean Vector"
+doBN(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doBN(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doBN(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)
+
+#"TFIDF - Stopwords Only"
+doNB(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doNB(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doNB(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)
+
+
+#### Load in Data ######
+
+path="C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\AllTweets2019v2.csv"
+
+Name_Label =[]
+Position_Label =[]
+SeasonGrade_Label = []
+PositiveScore = []
+NegativeScore = []
+Tweet_List = []
+
+
+with open(path, encoding="utf8") as csvfile:
+    read_csv = csv.reader(csvfile, delimiter=',')
+    for row in read_csv:
+        Name_Label.append(row[1])
+        Position_Label.append(row[2])
+        SeasonGrade_Label.append(row[3])
+        PositiveScore.append(row[4])
+        NegativeScore.append(row[5])
+        Tweet_List.append(row[6])
+       
+#### Validate Data Load ######
+      
+print(Name_Label)
+len(Name_Label)
+print(Position_Label)
+len(Position_Label)
+print(SeasonGrade_Label)
+len(SeasonGrade_Label)
+print(PositiveScore)
+len(PositiveScore)
+print(NegativeScore)
+len(NegativeScore)
+print(Tweet_List)
+len(Tweet_List)
+
+#### Create function that removes Emojis ######
+
+def deEmojify(text):
+    regrex_pattern = re.compile(pattern = "["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags = re.UNICODE)
+    return regrex_pattern.sub(r'',text)
+
+#### Clean Tweets ######
+
+Review_List = []
+
+for item in Tweet_List:
+    item = str(item)
+    item = item.upper()
+    item = item.replace("!", "")
+    item = item.replace(".", "")
+    item = item.replace("\\", "")
+    item = item.replace("'", "")
+    item = item.replace(",", "")
+    item = item.replace("(", "")
+    item = item.replace(")", "")
+    item = item.replace("?", "")
+    item = item.replace("-", "")
+    item = item.replace("+", "")
+    item = item.replace("[", "")
+    item = item.replace("]", "")
+    item = item.replace(":", "")
+    item = item.replace('"','')
+    item = item.replace('@','')
+    item = item.replace('#','')
+    item = item.replace('%','')
+    item = item.replace('/','')
+    item = item.replace('&','')
+    item = item.replace("1","")
+    item = item.replace("2","")
+    item = item.replace("3","")
+    item = item.replace("4","")
+    item = item.replace("5","")
+    item = item.replace("6","")
+    item = item.replace("7","")
+    item = item.replace("8","")
+    item = item.replace("9","")
+    item = item.replace("0","")
+    item = item.replace("\n", "")
+    item = deEmojify(item)
+    item = item.replace("AARON", "")
+    item = item.replace("RODGERS", "")
+    item = item.replace("MITCH", "")
+    item = item.replace("TRUBISKY", "")
+    item = item.replace("AJ", "")
+    item = item.replace("BROWN", "")
+    item = item.replace("DERRICK", "")
+    item = item.replace("HENRY", "")
+    item = item.replace("LEONARD", "")
+    item = item.replace("FOURNETTE", "")
+    item = item.replace("PATRICK", "")
+    item = item.replace("MAHOMES", "")
+    item = item.replace("TYREEK", "")
+    item = item.replace("HILL", "")
+    item = item.replace("DEVANTE", "")
+    item = item.replace("PARKER", "")
+    item = item.replace("MIKE", "")
+    item = item.replace("GESICKI", "")
+    item = item.replace("AUSTIN", "")
+    item = item.replace("HOOPER", "")
+    item = item.replace("STEFON", "")
+    item = item.replace("DIGGS", "")
+    item = item.replace("LEVEON", "")
+    item = item.replace("BELL", "")
+    item = item.replace("DALLAS", "")
+    item = item.replace("GOEDERT", "")
+    item = item.replace("TERRY", "")
+    item = item.replace("MCLAURIN", "")
+    item = item.replace("ZACH", "")
+    item = item.replace("ERTZ", "")
+    item = item.replace("DANIEL", "")
+    item = item.replace("JONES", "")
+    item = item.replace("DAK", "")
+    item = item.replace("PRESCOTT", "")
+    item = item.replace("JAMES", "")
+    item = item.replace("CONNER", "")
+    item = item.replace("JULIAN", "")
+    item = item.replace("EDELMAN", "")
+    item = item.replace("SONY", "")
+    item = item.replace("MICHEL", "")
+    item = item.replace("TOM", "")
+    item = item.replace("BRADY", "")
+    item = item.replace("JARED", "")
+    item = item.replace("COOK", "")
+    item = item.replace("MICHAEL", "")
+    item = item.replace("THOMAS", "")
+    item = item.replace("DARREN", "")
+    item = item.replace("WALLER", "")
+    item = item.replace("QUARTERBACK", "")
+    item = item.replace("QB", "")
+    item = item.replace("WR", "")
+    item = item.replace("WIDE", "")
+    item = item.replace("RECEIVER", "")
+    item = item.replace("RB", "")
+    item = item.replace("RUNNING", "")
+    item = item.replace("BACK", "")
+    item = item.replace("RUNNINGBACK", "")
+    item = item.replace("TIGHT", "")
+    item = item.replace("END", "")
+    item = item.replace("KELCE", "")
+    item = item.replace("TRAVIS", "")
+    item = item.replace("CHRISTIAN", "")
+    item = item.replace("MCCAFFREY", "")
+    item = item.replace("VEON", "")
+    item = item.replace("LE", "")
+    Review_List.append(item)
+    
+print(Review_List)
+
+
+##### Clean up Labels ##### 
+
+name_df = pd.DataFrame(Name_Label[1:])
+position_df = pd.DataFrame(Position_Label[1:])
+seasongrade_df = pd.DataFrame(SeasonGrade_Label[1:])
+
+# name_df
+# position_df
+# seasongrade_df
+
+namecol = {0:'Name'}
+positioncol = {0:'Position'}
+seasoncol = {0: 'Season Grade'}
+
+name_df = name_df.rename(columns=namecol)
+position_df = position_df.rename(columns=positioncol)
+seasongrade_df = seasongrade_df.rename(columns=seasoncol)
+
+##### CountVectorizer Config Area ##### 
+
+
+# MyCV = CountVectorizer()
+# config = "CV - Basic"
+
+MyCV = CountVectorizer(stop_words='english'
+                        , lowercase=True)
+config = "CV - Stopwords Only"
+
+# MyCV = CountVectorizer(stop_words='english',
+#                         binary=True)
+# config="CV - Boolean Vector, No Stopwords"
+
+# MyCV = CountVectorizer(stop_words='english'
+#                         , tokenizer=STEMMER
+#                         , lowercase=True)
+
+
+# MyCV = TfidfVectorizer()
+# config = "TFIDF - Basic"
+
+# MyCV = TfidfVectorizer(stop_words='english'
+#                         , lowercase=True)
+# config = "TFIDF - Stopwords Only"
+
+
+# MyCV = TfidfVectorizer(stop_words='english'
+#                        , tokenizer=STEMMER
+#                        , lowercase=True)
+    
+##### DTM Config Area ##### 
+
+Player_Tweets=MyCV.fit_transform(Review_List)
+Player_col=MyCV.get_feature_names()
+Player_corpus=pd.DataFrame(Player_Tweets.toarray(),columns=Player_col)
+
+Player_CV = pd.merge(name_df, Player_corpus,left_index=True, right_index=True)
+Player_CV = pd.merge(position_df, Player_CV,left_index=True, right_index=True)
+Player_CV = pd.merge(seasongrade_df, Player_CV,left_index=True, right_index=True)
+
+print(Player_CV)
+
+
+#### Make Dataset for Visualization #####
+
+viz_df = pd.melt(Player_CV, id_vars = ['Name', 'Position', 'Season Grade'], value_name="Count", var_name="Word")
+viz_df_v2 = viz_df[viz_df["Count"] > 0]
+viz_df_v2.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\NFL Tweets for Viz.csv")
+
+
+len(viz_df)
+len(viz_df_v2)
+
+##### Create unique copy of DTM
+
+MyCV_NoSW_Lowercase = Player_CV
+
+##### Test vs Train Split ##### 
+
+from sklearn.model_selection import train_test_split
+TrainDF, TestDF = train_test_split(Player_CV, test_size=0.3)
+
+Player_CV.head()
+TestDF.head()
+TrainDF.head()
+
+TestLabels_Name=TestDF["Name"]
+TestLabels_Position=TestDF["Position"]
+TestLabels_SeasonGrade=TestDF["Season Grade"]
+
+TestDF = TestDF.drop(["Name", "Position", "Season Grade"], axis=1)
+
+TrainDF_nolabels=TrainDF.drop(["Name", "Position", "Season Grade"], axis=1)
+
+TrainLabels_Name=TrainDF["Name"]
+TrainLabels_Position=TrainDF["Position"]
+TrainLabels_SeasonGrade = TrainDF["Season Grade"]
+
+##LINEAR SVM
+from sklearn.svm import LinearSVC
+
+SVM_Model_Name=LinearSVC(C=1)
+SVM_Model_Position=LinearSVC(C=1)
+SVM_Model_SeasonGrade=LinearSVC(C=1)
+
+SVM_Model_Name.fit(TrainDF_nolabels, TrainLabels_Name)
+SVM_Model_Position.fit(TrainDF_nolabels, TrainLabels_Position)
+SVM_Model_SeasonGrade.fit(TrainDF_nolabels, TrainLabels_SeasonGrade)
+
+Prediction_Name = SVM_Model_Name.predict(TestDF)
+Prediction_Position = SVM_Model_Position.predict(TestDF)
+Prediction_SeasonGrade = SVM_Model_SeasonGrade.predict(TestDF)
+
+TLN_df = pd.DataFrame(TestLabels_Name)
+PredictionNameDF = pd.DataFrame(Prediction_Name)
+TLP_df = pd.DataFrame(TestLabels_Position)
+PredictionPositionDF = pd.DataFrame(Prediction_Position)
+TLSG_df = pd.DataFrame(TestLabels_SeasonGrade)
+PredictionSeasonGradeDF = pd.DataFrame(Prediction_SeasonGrade)
+
+predcol = {0:"Prediction"}
+PredictionNameDF = PredictionNameDF.rename(columns=predcol)
+PredictionPositionDF = PredictionPositionDF.rename(columns=predcol)
+PredictionSeasonGradeDF = PredictionSeasonGradeDF.rename(columns=predcol)
+
+LinSVMName = pd.merge(TLN_df, PredictionNameDF, left_index=True, right_index=True)
+LinSVMPosition = pd.merge(TLP_df, PredictionPositionDF, left_index=True, right_index=True)
+LinSVMSeasonGrade = pd.merge(TLSG_df, PredictionSeasonGradeDF, left_index=True, right_index=True)
+
+LinSVMName.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\Lin SVM Name v1.csv")
+LinSVMPosition.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\Lin SVM Position v1.csv")
+LinSVMSeasonGrade.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\Lin SVM SeasonGrade v1.csv")
+
+
+
+##POLYNOMIAL SVM
+
+SVM_Model_Name=sklearn.svm.SVC(C=100, kernel='poly', degree=3, gamma="auto")
+SVM_Model_Position=sklearn.svm.SVC(C=100, kernel='poly', degree=3, gamma="auto")
+SVM_Model_SeasonGrade=sklearn.svm.SVC(C=100, kernel='poly', degree=3, gamma="auto")
+
+SVM_Model_Name.fit(TrainDF_nolabels, TrainLabels_Name)
+SVM_Model_Position.fit(TrainDF_nolabels, TrainLabels_Position)
+SVM_Model_SeasonGrade.fit(TrainDF_nolabels, TrainLabels_SeasonGrade)
+
+Prediction_Name = SVM_Model_Name.predict(TestDF)
+Prediction_Position = SVM_Model_Position.predict(TestDF)
+Prediction_SeasonGrade = SVM_Model_SeasonGrade.predict(TestDF)
+
+TLN_df = pd.DataFrame(TestLabels_Name)
+PredictionNameDF = pd.DataFrame(Prediction_Name)
+TLP_df = pd.DataFrame(TestLabels_Position)
+PredictionPositionDF = pd.DataFrame(Prediction_Position)
+TLSG_df = pd.DataFrame(TestLabels_SeasonGrade)
+PredictionSeasonGradeDF = pd.DataFrame(Prediction_SeasonGrade)
+
+predcol = {0:"Prediction"}
+PredictionNameDF = PredictionNameDF.rename(columns=predcol)
+PredictionPositionDF = PredictionPositionDF.rename(columns=predcol)
+PredictionSeasonGradeDF = PredictionSeasonGradeDF.rename(columns=predcol)
+
+LinSVMName = pd.merge(TLN_df, PredictionNameDF, left_index=True, right_index=True)
+LinSVMPosition = pd.merge(TLP_df, PredictionPositionDF, left_index=True, right_index=True)
+LinSVMSeasonGrade = pd.merge(TLSG_df, PredictionSeasonGradeDF, left_index=True, right_index=True)
+
+LinSVMName.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\ Poly SVM Name v1.csv")
+LinSVMPosition.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\Poly SVM Position v1.csv")
+LinSVMSeasonGrade.to_csv("C:\\Users\\cbeach\\Desktop\\Masters\\2020 - Fall - Text Mining\\Poly SVM SeasonGrade v1.csv")
+
+
+
+##RADIAL BASIS SVM
+SVM_Model_Sentiment=sklearn.svm.SVC(C=1, kernel='rbf', degree=3, gamma="auto")
+SVM_Model_Truth=sklearn.svm.SVC(C=1, kernel='rbf', degree=3, gamma="auto")
+
+SVM_Model_Sentiment.fit(TrainDF_nolabels, TrainLabels_Sentiment)
+SVM_Model_Truth.fit(TrainDF_nolabels, TrainLabels_Truth)
+
+Prediction_Sentiment = SVM_Model_Sentiment.predict(TestDF)
+Prediction_Truth = SVM_Model_Truth.predict(TestDF)
+
+from sklearn.metrics import confusion_matrix
+cnf_matrix_Sentiment = confusion_matrix(TestLabels_Sentiment, Prediction_Sentiment)
+cnf_matrix_Truth = confusion_matrix(TestLabels_Truth, Prediction_Truth)
+print(cnf_matrix_Sentiment)
+print(cnf_matrix_Truth)

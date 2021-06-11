@@ -1,0 +1,381 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Dec 12 18:23:37 2020
+
+@author: CBeach
+"""
+
+
+import nltk
+import pandas as pd
+import sklearn
+from sklearn.feature_extraction.text import CountVectorizer
+#Convert a collection of raw documents to a matrix of TF-IDF features.
+#Equivalent to CountVectorizer but with tf-idf norm
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.tokenize import word_tokenize
+## For Stemming
+from nltk.stem import PorterStemmer
+from nltk.tokenize import sent_tokenize, word_tokenize
+import os
+import csv
+import re  
+
+#### Load in Data ######
+
+path="/Users/Brian/Documents/Syracuse/IST_736_Text_Mining/Project/AllTweets2019v2.csv"
+
+Name_Label =[]
+Position_Label =[]
+SeasonGrade_Label = []
+PositiveScore = []
+NegativeScore = []
+Tweet_List = []
+
+
+with open(path, encoding="utf8") as csvfile:
+    read_csv = csv.reader(csvfile, delimiter=',')
+    for row in read_csv:
+        Name_Label.append(row[1])
+        Position_Label.append(row[2])
+        SeasonGrade_Label.append(row[3])
+        PositiveScore.append(row[4])
+        NegativeScore.append(row[5])
+        Tweet_List.append(row[6])
+       
+#### Validate Data Load ######
+      
+print(Name_Label)
+len(Name_Label)
+print(Position_Label)
+len(Position_Label)
+print(SeasonGrade_Label)
+len(SeasonGrade_Label)
+print(PositiveScore)
+len(PositiveScore)
+print(NegativeScore)
+len(NegativeScore)
+print(Tweet_List)
+len(Tweet_List)
+
+#### Create function that removes Emojis ######
+
+def deEmojify(text):
+    regrex_pattern = re.compile(pattern = "["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags = re.UNICODE)
+    return regrex_pattern.sub(r'',text)
+
+#### Clean Tweets ######
+
+Review_List = []
+
+for item in Tweet_List:
+    item = str(item)
+    item = item.upper()
+    item = item.replace("!", "")
+    item = item.replace(".", "")
+    item = item.replace("\\", "")
+    item = item.replace("'", "")
+    item = item.replace(",", "")
+    item = item.replace("(", "")
+    item = item.replace(")", "")
+    item = item.replace("?", "")
+    item = item.replace("-", "")
+    item = item.replace("+", "")
+    item = item.replace("[", "")
+    item = item.replace("]", "")
+    item = item.replace(":", "")
+    item = item.replace('"','')
+    item = item.replace('@','')
+    item = item.replace('#','')
+    item = item.replace('%','')
+    item = item.replace('/','')
+    item = item.replace('&','')
+    item = item.replace("1","")
+    item = item.replace("2","")
+    item = item.replace("3","")
+    item = item.replace("4","")
+    item = item.replace("5","")
+    item = item.replace("6","")
+    item = item.replace("7","")
+    item = item.replace("8","")
+    item = item.replace("9","")
+    item = item.replace("0","")
+    item = item.replace("\n", "")
+    item = deEmojify(item)
+    item = item.replace("AARON", "")
+    item = item.replace("RODGERS", "")
+    item = item.replace("MITCH", "")
+    item = item.replace("TRUBISKY", "")
+    item = item.replace("AJ", "")
+    item = item.replace("BROWN", "")
+    item = item.replace("DERRICK", "")
+    item = item.replace("HENRY", "")
+    item = item.replace("LEONARD", "")
+    item = item.replace("FOURNETTE", "")
+    item = item.replace("PATRICK", "")
+    item = item.replace("MAHOMES", "")
+    item = item.replace("TYREEK", "")
+    item = item.replace("HILL", "")
+    item = item.replace("DEVANTE", "")
+    item = item.replace("PARKER", "")
+    item = item.replace("MIKE", "")
+    item = item.replace("GESICKI", "")
+    item = item.replace("AUSTIN", "")
+    item = item.replace("HOOPER", "")
+    item = item.replace("STEFON", "")
+    item = item.replace("DIGGS", "")
+    item = item.replace("LEVEON", "")
+    item = item.replace("BELL", "")
+    item = item.replace("DALLAS", "")
+    item = item.replace("GOEDERT", "")
+    item = item.replace("TERRY", "")
+    item = item.replace("MCLAURIN", "")
+    item = item.replace("ZACH", "")
+    item = item.replace("ERTZ", "")
+    item = item.replace("DANIEL", "")
+    item = item.replace("JONES", "")
+    item = item.replace("DAK", "")
+    item = item.replace("PRESCOTT", "")
+    item = item.replace("JAMES", "")
+    item = item.replace("CONNER", "")
+    item = item.replace("JULIAN", "")
+    item = item.replace("EDELMAN", "")
+    item = item.replace("SONY", "")
+    item = item.replace("MICHEL", "")
+    item = item.replace("TOM", "")
+    item = item.replace("BRADY", "")
+    item = item.replace("JARED", "")
+    item = item.replace("COOK", "")
+    item = item.replace("MICHAEL", "")
+    item = item.replace("THOMAS", "")
+    item = item.replace("DARREN", "")
+    item = item.replace("WALLER", "")
+    item = item.replace("QUARTERBACK", "")
+    item = item.replace("QB", "")
+    item = item.replace("WR", "")
+    item = item.replace("WIDE", "")
+    item = item.replace("RECEIVER", "")
+    item = item.replace("RB", "")
+    item = item.replace("RUNNING", "")
+    item = item.replace("BACK", "")
+    item = item.replace("RUNNINGBACK", "")
+    item = item.replace("TIGHT", "")
+    item = item.replace("END", "")
+    item = item.replace("KELCE", "")
+    item = item.replace("TRAVIS", "")
+    item = item.replace("CHRISTIAN", "")
+    item = item.replace("MCCAFFREY", "")
+    item = item.replace("VEON", "")
+    item = item.replace("LE", "")
+    Review_List.append(item)
+    
+print(Review_List)
+
+
+##### Clean up Labels ##### 
+
+name_df = pd.DataFrame(Name_Label[1:])
+position_df = pd.DataFrame(Position_Label[1:])
+seasongrade_df = pd.DataFrame(SeasonGrade_Label[1:])
+
+name_df
+position_df
+seasongrade_df
+
+namecol = {0:'Name'}
+positioncol = {0:'Position'}
+seasoncol = {0: 'Season Grade'}
+
+name_df = name_df.rename(columns=namecol)
+position_df = position_df.rename(columns=positioncol)
+seasongrade_df = seasongrade_df.rename(columns=seasoncol)
+
+##### CountVectorizer Config Area ##### 
+
+
+# MyCV = CountVectorizer()
+# config = "CV - Basic"
+
+MyCV = CountVectorizer(input='content',
+                      analyzer= 'word',
+                      stop_words='english',
+                       lowercase=True)
+config = "CV - Stopwords Only"
+
+#MyCV = CountVectorizer(input = 'content',
+#                       analyzer='word', 
+#                       stop_words='english',
+#                       lowercase=True,
+#                       binary=True)
+#config="CV - Boolean Vector"
+
+# MyCV = CountVectorizer(stop_words='english'
+#                         , tokenizer=STEMMER
+#                         , lowercase=True)
+
+
+# MyCV = TfidfVectorizer()
+# config = "TFIDF - Basic"
+
+#MyCV = TfidfVectorizer(input='content', 
+#                       analyzer='word', 
+#                       stop_words='english',
+#                       lowercase=True)
+#config = "TFIDF - Stopwords Only"
+
+
+# MyCV = TfidfVectorizer(stop_words='english'
+#                        , tokenizer=STEMMER
+#                        , lowercase=True)
+    
+##### DTM Config Area ##### 
+
+Player_Tweets=MyCV.fit_transform(Review_List)
+Player_col=MyCV.get_feature_names()
+Player_corpus=pd.DataFrame(Player_Tweets.toarray(),columns=Player_col)
+
+Player_CV = pd.merge(name_df, Player_corpus,left_index=True, right_index=True)
+Player_CV = pd.merge(position_df, Player_CV,left_index=True, right_index=True)
+Player_CV = pd.merge(seasongrade_df, Player_CV,left_index=True, right_index=True)
+
+print(Player_CV)
+print(seasongrade_df)
+
+##### Create unique copy of DTM
+
+MyCV_NoSW_Lowercase = Player_CV
+
+###### Brian
+
+######## Making SeasonCV
+SeasonCV = Player_CV.copy()
+SeasonCV = SeasonCV.drop('Name', 1)
+SeasonCV = SeasonCV.drop('Position', 1)
+print(SeasonCV)
+
+### Making Position DF
+PositionCV = Player_CV.copy()
+PositionCV = PositionCV.drop('Name', 1)
+PositionCV = PositionCV.drop('Season Grade', 1)
+print(PositionCV)
+
+##### making NameCV
+NameCV = Player_CV.copy()
+NameCV = NameCV.drop('Position', 1)
+NameCV = NameCV.drop('Season Grade', 1)
+print(NameCV)
+
+##### Test vs Train Split ##### 
+
+from sklearn.model_selection import train_test_split
+# managing labels
+# Splitting Season DFs
+SeasonTrainDF, SeasonTestDF = train_test_split(SeasonCV, test_size=0.3)
+SeasonTestLabels = SeasonTestDF["Season Grade"]
+SeasonTestDF = SeasonTestDF.drop(["Season Grade"], axis=1)
+SeasonTrainLabels = SeasonTrainDF["Season Grade"]
+SeasonTrainNoLabelsDF = SeasonTrainDF.drop(["Season Grade"], axis=1)
+#print(SeasonTestLabels)
+#print(SeasonTestDF)
+#print(SeasonTrainLabels)
+#print(SeasonTrainNoLabelsDF)
+#print(SeasonTrainDF)
+
+# Splitting Position DFs
+PositionTrainDF, PositionTestDF = train_test_split(PositionCV, test_size=0.3)
+PositionTestLabels = PositionTestDF["Position"]
+PositionTestDF = PositionTestDF.drop(["Position"], axis=1)
+PositionTrainLabels = PositionTrainDF["Position"]
+PositionTrainNoLabelsDF = PositionTrainDF.drop(["Position"], axis=1)
+#print(PositionTestLabels)
+#print(PositionTestDF)
+#print(PositionTrainLabels)
+#print(PositionTrainNoLabelsDF)
+#print(PositionTrainDF)
+
+# Splitting Name DFs
+NameTrainDF, NameTestDF = train_test_split(NameCV, test_size=0.3)
+NameTestLabels = NameTestDF["Name"]
+NameTestDF = NameTestDF.drop(["Name"], axis=1)
+NameTrainLabels = NameTrainDF["Name"]
+NameTrainNoLabelsDF = NameTrainDF.drop(["Name"], axis=1)
+#print(NameTestLabels)
+#print(NameTestDF)
+#print(NameTrainLabels)
+#print(NameTrainNoLabelsDF)
+#print(NameTrainDF)
+
+def important_features(vectorizer,classifier,n):
+    class_labels = classifier.classes_
+    feature_names =vectorizer.get_feature_names()
+    numlabels = (len(class_labels))
+    for i in range(0, numlabels):
+        topnclass = sorted(zip(classifier.feature_count_[i], feature_names),reverse=True)[:n]
+        print("Important words in label:", class_labels[i])
+        for coef, feat in topnclass:
+            print(coef, feat)
+        print("-----------------------------------------")
+        
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import confusion_matrix
+from sklearn import metrics
+import numpy as np
+
+MyModelNB= MultinomialNB()
+def doNB(trainnolabels, trainonlylabels, testdata, testonlylabels, vectorizer, n):
+    Prediction = MyModelNB.fit(trainnolabels, trainonlylabels).predict(testdata)
+    print("The prediction from NB is:")
+    print(Prediction)
+    print("The actual labels are:")
+    print(testonlylabels)
+    cnf_matrix = confusion_matrix(testonlylabels, Prediction)
+    print("The confusion matrix is:")
+    print(cnf_matrix)
+    print("Accuracy:",metrics.accuracy_score(testonlylabels, Prediction))
+    ### prediction probabilities
+    ## columns are the labels in alphabetical order
+    ## The decinal in the matrix are the prob of being
+    ## that label
+    #print("False True")
+    print(np.round(MyModelNB.predict_proba(testdata),2))
+    important_features(vectorizer, MyModelNB, n)
+
+from sklearn.naive_bayes import BernoulliNB    
+BernModel = BernoulliNB()
+def doBN(trainnolabels, trainonlylabels, testdata, testonlylabels, vectorizer, n):
+    BernModel.fit(trainnolabels, trainonlylabels)
+    ##BernoulliNB(alpha=1.0, binarize=0.0, class_prior=None, fit_prior=True)
+    print("\nBernoulli prediction:\n")
+    Prediction=BernModel.predict(testdata)
+    print("\nActual:")
+    print(testonlylabels)
+    print("\nThe prediction\n")
+    print(Prediction)
+    #
+    bn_matrix = confusion_matrix(testonlylabels, Prediction)
+    print("\nThe confusion matrix is:")
+    print(bn_matrix)
+    print("Accuracy:",metrics.accuracy_score(testonlylabels, Prediction))
+    #print("False True")
+    print(np.round(BernModel.predict_proba(testdata),2))
+    important_features(vectorizer, BernModel, n)
+
+#"CV - Stopwords Only"
+doNB(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doNB(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doNB(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)
+
+#"CV - Boolean Vector"
+doBN(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doBN(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doBN(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)
+
+#"TFIDF - Stopwords Only"
+doNB(SeasonTrainNoLabelsDF, SeasonTrainLabels, SeasonTestDF, SeasonTestLabels, MyCV, 10)
+doNB(PositionTrainNoLabelsDF, PositionTrainLabels, PositionTestDF, PositionTestLabels, MyCV, 10)
+doNB(NameTrainNoLabelsDF, NameTrainLabels, NameTestDF, NameTestLabels, MyCV, 10)

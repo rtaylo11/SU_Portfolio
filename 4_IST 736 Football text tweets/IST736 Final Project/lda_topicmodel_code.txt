@@ -1,0 +1,280 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Dec 12 20:10:26 2020
+
+@author: lkoto
+"""
+
+import nltk
+import pandas as pd
+import sklearn
+from sklearn.feature_extraction.text import CountVectorizer
+#Convert a collection of raw documents to a matrix of TF-IDF features.
+#Equivalent to CountVectorizer but with tf-idf norm
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.tokenize import word_tokenize
+## For Stemming
+from nltk.stem import PorterStemmer
+from nltk.tokenize import sent_tokenize, word_tokenize
+import os
+import csv
+import re  
+
+#### Load in Data ######
+
+path="C:\\Users\\lkoto\\OneDrive\\Documents\\Classes\\736\\AllTweets2019v2.csv"
+
+Name_Label =[]
+Tweet_List = []
+
+
+with open(path, encoding="utf8") as csvfile:
+    read_csv = csv.reader(csvfile, delimiter=',')
+    for row in read_csv:
+        Name_Label.append(row[1])
+        Tweet_List.append(row[6])
+       
+#### Validate Data Load ######
+      
+print(Name_Label)
+len(Name_Label)
+print(Tweet_List)
+len(Tweet_List)
+
+def deEmojify(text):
+    regrex_pattern = re.compile(pattern = "["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           "]+", flags = re.UNICODE)
+    return regrex_pattern.sub(r'',text)
+
+#### Clean Tweets ######
+
+Review_List = []
+
+for item in Tweet_List:
+    item = str(item)
+    item = item.upper()
+    item = item.replace("_", "")
+    item = item.replace("!", "")
+    item = item.replace(".", "")
+    item = item.replace("\\", "")
+    item = item.replace("'", "")
+    item = item.replace(",", "")
+    item = item.replace("(", "")
+    item = item.replace(")", "")
+    item = item.replace("?", "")
+    item = item.replace("-", "")
+    item = item.replace("+", "")
+    item = item.replace("[", "")
+    item = item.replace("]", "")
+    item = item.replace(":", "")
+    item = item.replace('"','')
+    item = item.replace('@','')
+    item = item.replace('#','')
+    item = item.replace('%','')
+    item = item.replace('/','')
+    item = item.replace('&','')
+    item = item.replace("1","")
+    item = item.replace("2","")
+    item = item.replace("3","")
+    item = item.replace("4","")
+    item = item.replace("5","")
+    item = item.replace("6","")
+    item = item.replace("7","")
+    item = item.replace("8","")
+    item = item.replace("9","")
+    item = item.replace("0","")
+    item = item.replace("\n", "")
+    item = deEmojify(item)
+    item = item.replace("AARON", "")
+    item = item.replace("RODGERS", "")
+    item = item.replace("MITCH", "")
+    item = item.replace("TRUBISKY", "")
+    item = item.replace("AJ", "")
+    item = item.replace("BROWN", "")
+    item = item.replace("DERRICK", "")
+    item = item.replace("HENRY", "")
+    item = item.replace("LEONARD", "")
+    item = item.replace("FOURNETTE", "")
+    item = item.replace("PATRICK", "")
+    item = item.replace("MAHOMES", "")
+    item = item.replace("TYREEK", "")
+    item = item.replace("HILL", "")
+    item = item.replace("DEVANTE", "")
+    item = item.replace("PARKER", "")
+    item = item.replace("MIKE", "")
+    item = item.replace("GESICKI", "")
+    item = item.replace("AUSTIN", "")
+    item = item.replace("HOOPER", "")
+    item = item.replace("STEFON", "")
+    item = item.replace("DIGGS", "")
+    item = item.replace("LEVEON", "")
+    item = item.replace("BELL", "")
+    item = item.replace("DALLAS", "")
+    item = item.replace("GOEDERT", "")
+    item = item.replace("TERRY", "")
+    item = item.replace("MCLAURIN", "")
+    item = item.replace("ZACH", "")
+    item = item.replace("ERTZ", "")
+    item = item.replace("DANIEL", "")
+    item = item.replace("JONES", "")
+    item = item.replace("DAK", "")
+    item = item.replace("PRESCOTT", "")
+    item = item.replace("JAMES", "")
+    item = item.replace("CONNER", "")
+    item = item.replace("JULIAN", "")
+    item = item.replace("EDELMAN", "")
+    item = item.replace("SONY", "")
+    item = item.replace("MICHEL", "")
+    item = item.replace("TOM", "")
+    item = item.replace("BRADY", "")
+    item = item.replace("JARED", "")
+    item = item.replace("COOK", "")
+    item = item.replace("MICHAEL", "")
+    item = item.replace("THOMAS", "")
+    item = item.replace("DARREN", "")
+    item = item.replace("WALLER", "")
+    item = item.replace("QUARTERBACK", "")
+    item = item.replace("QB", "")
+    item = item.replace("WIDE", "")
+    item = item.replace("RECEIVER", "")
+    item = item.replace("RB", "")
+    item = item.replace("RUNNING", "")
+    item = item.replace("BACK", "")
+    item = item.replace("RUNNINGBACK", "")
+    item = item.replace("TIGHT", "")
+    item = item.replace("END", "")
+    item = item.replace("KELCE", "")
+    item = item.replace("TRAVIS", "")
+    item = item.replace("CHRISTIAN", "")
+    item = item.replace("MCCAFFREY", "")
+    item = item.replace("VEON", "")
+    Review_List.append(item)
+    
+print(Review_List)
+
+
+##### Clean up Labels ##### 
+
+name_df = pd.DataFrame(Name_Label[1:])
+
+
+name_df
+
+
+namecol = {0:'Name'}
+
+name_df = name_df.rename(columns=namecol)
+
+##### CountVectorizer Config Area #####
+
+MyCountV=CountVectorizer(input="content", lowercase=True, stop_words = "english")
+ 
+MyDTM = MyCountV.fit_transform(Review_List)  # create a sparse matrix
+print(type(MyDTM))
+#vocab is a vocabulary list
+vocab = MyCountV.get_feature_names()  # change to a list
+
+MyDTM = MyDTM.toarray()  # convert to a regular array
+print(list(vocab)[10:20])
+ColumnNames=MyCountV.get_feature_names()
+MyDTM_DF=pd.DataFrame(MyDTM,columns=ColumnNames)
+print(MyDTM_DF)
+
+
+from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD
+from sklearn.feature_extraction.text import CountVectorizer
+#######
+
+#MyVectLDA_DH=CountVectorizer(input='filename')
+##path="C:\\Users\\profa\\Documents\\Python Scripts\\TextMining\\DATA\\SmallTextDocs"
+#Vect_DH = MyVectLDA_DH.fit_transform(ListOfCompleteFiles)
+#ColumnNamesLDA_DH=MyVectLDA_DH.get_feature_names()
+#CorpusDF_DH=pd.DataFrame(Vect_DH.toarray(),columns=ColumnNamesLDA_DH)
+#print(CorpusDF_DH)
+
+######
+
+# MyDTM_DF1 = MyDTM_DF.sample(n=1000, random_state=1)
+
+num_topics = 3
+
+lda_model_DH = LatentDirichletAllocation(n_components=num_topics, 
+                                         max_iter=100, learning_method='online')
+#lda_model = LatentDirichletAllocation(n_components=NUM_TOPICS, max_iter=10, learning_method='online')
+LDA_DH_Model = lda_model_DH.fit_transform(MyDTM_DF)
+
+
+print("SIZE: ", LDA_DH_Model.shape)  # (NO_DOCUMENTS, NO_TOPICS)
+
+# Let's see how the first document in the corpus looks like in
+## different topic spaces
+#print("First headline...")
+#print(LDA_DH_Model[0])
+#print("Sixth headline...")
+#print(LDA_DH_Model[5])
+
+# print(lda_model_DH.components_)
+
+
+## implement a print function 
+## REF: https://nlpforhackers.io/topic-modeling/
+def print_topics(model, vectorizer, top_n=10):
+    for idx, topic in enumerate(model.components_):
+        print("Topic:  ", idx)
+      
+        print([(vectorizer.get_feature_names()[i], topic[i])
+                        for i in topic.argsort()[:-top_n - 1:-1]])
+                        ## gets top n elements in decreasing order
+    
+
+####### call the function above with our model and CountV
+print_topics(lda_model_DH, MyCountV)
+
+
+## Print LDA using print function from above
+########## Other Notes ####################
+# import pyLDAvis.sklearn as LDAvis
+# import pyLDAvis
+# import pyLDAvis.gensim 
+# # conda install -c conda-forge pyldavis
+# pyLDAvis.enable_notebook() ## not using notebook
+# panel = LDAvis.prepare(lda_model_DH, MyDTM_DF, MyCountV, mds='tsne')
+# pyLDAvis.show(panel)
+# panel = pyLDAvis.gensim.prepare(lda_model_DH, MyDTM, MyCountV, mds='tsne')
+# pyLDAvis.show(panel)
+##########################################################################
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import numpy as np
+
+word_topic = np.array(lda_model_DH.components_)
+word_topic = word_topic.transpose()
+
+num_top_words = 10
+vocab_array = np.asarray(vocab)
+
+#fontsize_base = 70 / np.max(word_topic) # font size for word with largest share in corpus
+fontsize_base = 20
+
+for t in range(num_topics):
+    plt.subplot(1, num_topics, t + 1)  # plot numbering starts with 1
+    plt.xlim(0, num_topics + 0.5)  # stretch the y-axis to accommodate the words
+    plt.ylim(0, num_top_words + 0.5)  # stretch the y-axis to accommodate the words
+    plt.xticks([])  # remove x-axis markings ('ticks')
+    plt.yticks([]) # remove y-axis markings ('ticks')
+    plt.title('Topic #{}'.format(t))
+    top_words_idx = np.argsort(word_topic[:,t])[::-1]  # descending order
+    top_words_idx = top_words_idx[:num_top_words]
+    top_words = vocab_array[top_words_idx]
+    top_words_shares = word_topic[top_words_idx, t]
+    for i, (word, share) in enumerate(zip(top_words, top_words_shares)):
+        plt.text(0.1, num_top_words-i-0.5, word, fontsize=fontsize_base)
+        
+        
+
+plt.tight_layout()
+plt.show()

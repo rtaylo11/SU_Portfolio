@@ -1,0 +1,524 @@
+---
+title: "IST 707 Project"
+author: "Maryse Khoury, Brian Taylor"
+date: "11/12/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Load libraries
+```{r}
+library(tidyverse)
+library(grid)
+library(libcoin)
+library(mvtnorm)
+library(RWeka)
+library(partykit)
+library(rpart)
+library(rpart.plot)
+library(e1071)
+library(rjson)
+library(data.table)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(cluster)
+library(factoextra)
+library(arules)
+library(arulesViz)
+library(Matrix)
+library(ggplot2)
+library(datetime)
+library(date)
+library(lubridate)
+```
+
+# Ingesting and transforming, used https://www.r-bloggers.com/converting-nested-json-to-a-tidy-data-frame-with-r
+# for munging
+
+```{r}
+USv <- read.csv("/Users/Brian/Documents/Syracuse/IST_707/USvideos_no-special_characters.csv",sep =",")
+#USv
+UScat <- fromJSON(file = "/Users/Brian/Documents/Syracuse/IST_707/US_category_id.json")
+#UScat
+
+#USv <- read.csv("USvideos.csv",sep =",")
+#USv
+#UScat <- fromJSON(file = "US_category_id.json")
+#UScat
+
+
+
+str(UScat)
+data_raw <- enframe(unlist(UScat))
+data_raw
+data_raw %>% separate(name, into = c(paste0("x",1:3)))
+nms_sep <- paste0("name", 1:3)
+rgx_split <-"\\."
+
+data_sep <-
+  data_raw %>%
+  separate(name, into = nms_sep, sep = rgx_split, fill = "right")
+data_sep
+
+data_filt <-
+  data_sep %>%
+  filter(
+    (
+      name1 == "items" & name2 == "id"
+    )|
+      (
+        name1 == "items" & name2 == "snippet" & name3 == "title"
+      )
+  )
+data_filt
+
+data_clean1 <-
+  data_filt %>%
+  select (name2, name3, value) %>%
+  mutate(ID = if_else(name2 == "id", value, NA_character_)) %>%
+  mutate(Category = if_else(name3 == "title", value,NA_character_))
+data_clean1
+
+data_clean2 <-
+  data_clean1 %>%
+  fill(ID, .direction = "down") %>%
+  filter(ID !="")
+data_clean2
+
+data_clean3 <-
+  data_clean2 %>%
+  fill(ID, Category) %>%
+  filter(Category !="")
+data_clean3
+
+
+#USCatJson <- data.frame (data_clean3$name2=="id", data_clean3$value, data_clean3$Category)
+USCatJson <- data.frame (data_clean3$name3=="title", data_clean3$ID, data_clean3$Category)
+#USCatJson
+colnames(USCatJson)[1] <- "col1"
+colnames(USCatJson)[2] <- "ID"
+colnames(USCatJson)[3] <- "Category"
+#USCatJson
+USCatJson <- USCatJson[USCatJson$col1== "TRUE", 2:3]
+view(USCatJson)
+
+USvFile <- merge(USv, USCatJson, by.x="category_id", by.y="ID", all.x=TRUE)
+library(sparklyr)
+library(dplyr)
+#USvFile <- left_join(USv, USCatJson, by = c("category_id","category_id"))
+
+USvFile$video_id %>% replace_na("Unknown_Video")
+USvFile$video_id_num %>% replace_na(0)
+USvFile$views %>% replace_na(0)
+USvFile$likes %>% replace_na(0)
+USvFile$dislikes %>% replace_na(0)
+USvFile$comment_count %>% replace_na(0)
+
+
+#USvFile <-  USvFile[!complete.cases(USvFile)]
+USvFile$PI <- round(((USvFile$comment_count + USvFile$likes + USvFile$dislikes)/USvFile$views) * 100, 2)
+view(USvFile)
+
+
+#write.csv(USvFile,"/Users/GORGEOUS!/Desktop/2019-1002 IST 707 Data Analysis/Trending YouTube Videos Statistics Project/IST 707 Project\\US file with Categories3.csv", row.names = FALSE)
+```
+
+# Summary of dataset
+
+```{r}
+summary(USvFile)
+
+```
+
+# Plot the numbers of each category
+```{r}
+USCat_Count <- USvFile %>% count(Category)
+USCat_Count
+
+p <- ggplot(data = USvFile,
+            mapping= aes(x= Category, fill= Category))
+p + geom_bar() + guides(fill= FALSE)+ theme(axis.text.x = element_text(angle =90, hjust = 1))
+
+
+```
+
+
+# Aggregated Average of Views, likes, Dislikes & Comments count by month
+```{r}
+x <- USvFile[,c(4:12,14)]  # changed from 3:11
+head(x)
+USDatenumdf <- x[,-2:-5] 
+USDatenumdf 
+str(USDatenumdf)
+
+Date_agg = aggregate(USDatenumdf[,-1], by = list(USDatenumdf$trending_date), FUN = mean)
+colnames(Date_agg) <- c("Date","Views","Likes","Dislikes","Comment_Count","PI")
+Date_agg
+str(Date_agg)
+
+min(Date_agg$PI)
+max(Date_agg$PI)
+
+min(Date_agg$Views)
+max(Date_agg$Views)
+
+min(Date_agg$Likes)
+max(Date_agg$Likes)
+
+min(Date_agg$Dislikes)
+max(Date_agg$Dislikes)
+
+Date_agg$YrMn <- paste(substr(Date_agg$Date, 1, 2), substr(Date_agg$Date,6,8))
+Date_agg
+
+YrMn_agg = aggregate(Date_agg[,-c(1,7)], by = list(Date_agg$YrMn), FUN = mean)
+colnames(YrMn_agg) <- c("Year_Month","Views","Likes","Dislikes","Comment_Count","PI")
+YrMn_agg$Year_Month <- as.factor(YrMn_agg$Year_Month)
+YrMn_agg
+str(YrMn_agg)
+
+ggplot(YrMn_agg,  aes(x= Year_Month, y= PI, fill= PI)) + geom_bar(position="dodge", stat="identity") 
+ggplot(YrMn_agg,  aes(x= Year_Month, y= Views, fill= Views)) + geom_bar(position="dodge", stat="identity") 
+ggplot(YrMn_agg,  aes(x= Year_Month, y= Likes, fill= Likes)) + geom_bar(position="dodge", stat="identity") 
+ggplot(YrMn_agg,  aes(x= Year_Month, y= Dislikes, fill= Dislikes)) + geom_bar(position="dodge", stat="identity") 
+ggplot(YrMn_agg,  aes(x= Year_Month, y= Comment_Count, fill= Comment_Count)) + geom_bar(position="dodge", stat="identity") 
+
+# Combined both but it is not as clear as the other
+
+library(reshape2)
+library(ggplot2)
+
+dfpi <- melt(YrMn_agg[,c('Year_Month','PI')],id.vars = 1)
+ggplot(dfpi,aes(x = Year_Month,y = value)) + 
+    geom_bar(aes(fill = variable),stat = "identity",position = "dodge") + 
+    scale_y_log10()
+dfm <- melt(YrMn_agg[,c('Year_Month','Likes','Dislikes')],id.vars = 1)
+ggplot(dfm,aes(x = Year_Month,y = value)) + 
+    geom_bar(aes(fill = variable),stat = "identity",position = "dodge") + 
+    scale_y_log10()
+
+
+
+```
+
+
+
+
+
+# Plot Categories dislikes, likes & comment counts agains views
+```{r}
+
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = pi, y = views, color = Category))
+
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = dislikes, y = views, color = Category))
+
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = likes, y = views, color = Category))
+
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = comment_count, y = views, color = Category))+ theme(axis.text.x = element_text(angle =90, hjust = 1))
+```
+
+
+```{r}
+#max(USvFile$likes)
+#min(USvFile$likes)
+
+# plot pi 
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = pi, y = views, color = Category))
+
+p2 <- ggplot(data = USvFile,
+            mapping = aes(x = pi, fill = Category, color = Category))
+p2 + geom_density() + xlim(0, 8)
+
+#df2<-USvFile %>%      gave an error
+#arrange(desc(pi))
+
+#ggplot(data=df2, aes(x=Category, y= pi, fill = Category)) +
+#geom_bar(stat="identity")+ theme(axis.text.x = element_text(angle =90, hjust = 1))
+
+
+# plot dislikes
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = dislikes, y = views, color = Category))
+
+p3 <- ggplot(data = USvFile,
+            mapping = aes(x = dislikes, fill = Category, color = Category))
+p3 + geom_density() + xlim(0, 1000)
+# added xlim to "zoom in" on the dislikes
+
+df3<-USvFile %>%
+arrange(desc(dislikes))
+
+ggplot(data=df3, aes(x=Category, y= dislikes, fill = Category)) +
+geom_bar(stat="identity")+ theme(axis.text.x = element_text(angle =90, hjust = 1))
+
+# plot likes
+ggplot(data = USvFile) +
+  geom_point(mapping = aes(x = likes, y = views, color = Category))
+
+p4 <- ggplot(data = USvFile,
+            mapping = aes(x = likes, fill = Category, color = Category))
+p4 + geom_density() + xlim(0, 10000)
+
+
+df4<-USvFile %>%
+arrange(desc(likes))
+
+ggplot(data=df4, aes(x=Category, y= likes, fill = Category)) +
+geom_bar(stat="identity")+ theme(axis.text.x = element_text(angle =90, hjust = 1))
+
+
+#scale_colour_gradient2()+
+#coord_flip()+
+#ylim(0,6000000)+
+#scale_x_discrete(limits = df1$Category)+
+#theme_classic()
+# got this to run by eliminating some extra code. Good babsis for other charts
+
+```
+
+# Create USrules with confidence 0.5 
+```{r}
+
+
+# I pared down the factors to identify rules, wasn't successful
+
+USvFile1 <- USvFile[, c(-1,-3:-5,-9:-15)]
+#USvFile1 <- USvFile[, c(-1:-4, -12:-16)]
+USfdata <- data.frame(sapply(USvFile1,as.factor))
+head(USfdata)
+
+USrules1 <- apriori(USfdata, parameter = list(supp=0.005, conf=0.5))  # switched confidence to 0.5
+Apriori
+
+summary(USrules1)
+options(digits = 2)
+inspect(USrules1[1:10])
+#plot(USrules1[1:20], method="graph", interactive=FALSE, shading=NA)
+USrules1 <- sort(USrules1, by="confidence")
+inspect(USrules1[is.redundant(USrules1)][1:10])
+inspect(USrules1[!is.redundant(USrules1)][1:20])
+
+# need a so what
+
+```
+# Create USrules with confidence 0.8, which resulted in producing stronger rules 
+```{r}
+
+#a <- USvFile[,8:17]
+a <- USvFile[,c(2,9:17)]
+#USnumdf <- a[,-5:-9]
+#USnumdf <- a [,-6:-8]
+USnumdf <- a [,-6:-9]
+
+#write.csv(USnumdf,"/Users/GORGEOUS!/Desktop/2019-1002 IST 707 Data Analysis/Trending YouTube Videos Statistics Project/IST 707 Project\\USnumdf.csv", row.names = FALSE)
+
+head(a)
+head(USnumdf)
+USfdata2 <- data.frame(sapply(USnumdf,as.factor))
+
+USrules2 <- apriori(USfdata2, parameter = list(supp=0.005, conf=0.8))
+summary(USrules2)
+options(digits = 2)
+inspect(USrules2[1:10])
+plot(USrules2[1:20], method="graph", interactive=FALSE, shading=NA)
+USrules2 <- sort(USrules2, by="confidence")
+inspect(USrules2[is.redundant(USrules2)][1:10])
+inspect(USrules2[!is.redundant(USrules2)][1:20])
+```
+# Kmeans
+```{r}
+#a <- USvFile[,8:17]  calculated above
+#USnumdf <- a[,-5:-9] Calculated above
+
+#hc_single <- hclust(dist(USnumdf[,-5]), method = "single")
+#hc_complete <- hclust(dist(USnumdf[,-5]), method = "complete")
+
+# Kmeans with 6 clusters
+set.seed(723)
+#USkm6 <- kmeans(USnumdf[,-5],6,nstart = 20)
+USkm6 <- kmeans(USnumdf[,-6],6,nstart = 20)
+USkm6
+USkm6$centers
+table(USkm6$cluster, USnumdf$Category)
+#fviz_cluster(USkm6, data = data.frame(USnumdf[,-5]), ellipse.type = "convex") + theme_minimal()
+fviz_cluster(USkm6, data = data.frame(USnumdf[,-6]), ellipse.type = "convex") + theme_minimal()
+
+# Kmeans with 4 clusters
+set.seed(723)
+#USkm4 <- kmeans(USnumdf[,-5],4,nstart = 20)
+USkm4 <- kmeans(USnumdf[,-6],4,nstart = 20)
+USkm4
+USkm4$centers
+table(USkm4$cluster, USnumdf$Category)
+#fviz_cluster(USkm4, data = data.frame(USnumdf[,-5]), ellipse.type = "convex") + theme_minimal()
+fviz_cluster(USkm4, data = data.frame(USnumdf[,-6]), ellipse.type = "convex") + theme_minimal()
+
+# Kmeans with 2 clusters
+set.seed(723)
+#USkm2 <- kmeans(USnumdf[,-5],2,nstart = 20)
+USkm2 <- kmeans(USnumdf[,-6],2,nstart = 20)
+USkm2
+USkm2$centers
+table(USkm2$cluster, USnumdf$Category)
+#fviz_cluster(USkm2, data = data.frame(USnumdf[,-5]), ellipse.type = "convex") + theme_minimal()
+fviz_cluster(USkm2, data = data.frame(USnumdf[,-6]), ellipse.type = "convex") + theme_minimal()
+
+set.seed(723)
+#kmeans(USnumdf[,-5], centers = 6, nstart = 1)$tot.withinss
+#kmeans(USnumdf[,-5], centers = 6, nstart = 20)$tot.withinss
+kmeans(USnumdf[,-6], centers = 6, nstart = 1)$tot.withinss
+kmeans(USnumdf[,-6], centers = 6, nstart = 20)$tot.withinss
+
+
+#kmeans(USnumdf[,-5], centers = 4, nstart = 1)$tot.withinss
+#kmeans(USnumdf[,-5], centers = 4, nstart = 20)$tot.withinss
+kmeans(USnumdf[,-6], centers = 4, nstart = 1)$tot.withinss
+kmeans(USnumdf[,-6], centers = 4, nstart = 20)$tot.withinss
+
+
+#kmeans(USnumdf[,-5], centers = 2, nstart = 1)$tot.withinss
+#kmeans(USnumdf[,-5], centers = 2, nstart = 20)$tot.withinss
+kmeans(USnumdf[,-6], centers = 2, nstart = 1)$tot.withinss
+kmeans(USnumdf[,-6], centers = 2, nstart = 20)$tot.withinss
+```
+
+# Use Elbow method to find optimal number of clusters K
+```{r}
+set.seed(723)
+wss <- c()
+for (k in 1:10) {
+  #USkm <- kmeans(USnumdf[,-5], centers = k, nstart = 20)
+  USkm <- kmeans(USnumdf[,-6], centers = k, nstart = 20)
+  wss[k] <- USkm$tot.withinss
+}
+plot(wss, type = "b", xlab = "No. of Clusters K", ylab = "Total WSS")
+```
+
+# Decision Tree
+```{r}
+head(USnumdf)
+US_train <- USnumdf %>% sample_frac(size=0.8)
+US_test <- USnumdf %>% anti_join(US_train)
+
+# classification Tree
+# A C4.5 algoritm decision tree
+
+US_C45 <- J48(Category~., data = US_train, control = Weka_control(R=TRUE, M=20, N=10))
+plot(US_C45)
+summary(US_C45)
+US_C45_prediction <- predict(US_C45, newdata = US_test %>% select(-Category))
+caret::confusionMatrix(data = US_C45_prediction, reference = US_test$Category)
+```
+
+# Default model with rpart
+```{r}
+rpart_US <- rpart(Category~., data = US_train, method = "class")
+rpart.plot(rpart_US, box.palette = "RdBu", shadow.col = "gray", nn=TRUE)
+rpart_US_prediction <- predict(rpart_US, newdata = US_test %>% select(-Category), type = "class")
+caret::confusionMatrix(data = rpart_US_prediction, reference = US_test$Category)
+```
+
+# Gini index Model 
+```{r}
+rpart_US_gini <- rpart(Category~., data = US_train, method = "class", parms = list(split="gini"))
+rpart_US_gini_prediction <- predict (rpart_US_gini, newdata = US_test %>% select(-Category), type ="class")
+caret::confusionMatrix(data = rpart_US_gini_prediction, reference = US_test$Category)
+```
+
+
+# Tags Text Mining
+```{r}
+# create the text file including tags and video id
+tmData <- USvFile[,c(2,7)]
+head(tmData)
+str(tmData)
+
+# convert factor variables to character
+tmData[] <- lapply(tmData, as.character)
+str(tmData)
+
+library(dplyr)
+library(tm.plugin.webmining)
+library(purrr)
+library(tidytext)
+library(gutenbergr)
+library(ggplot2)
+
+library(tidytext)
+
+
+# Associate each word with the video id
+TagWords <- tmData %>%
+  unnest_tokens(word, tags) %>%
+  anti_join(stop_words)
+
+head(TagWords)
+
+```
+
+# Tokenization
+```{r}
+library(tm)
+library(SnowballC)
+
+# create a word corpus
+tags_corpus <- VCorpus(VectorSource(TagWords$word))
+
+# view the corpus
+print(tags_corpus)
+
+# create a document-term matrix and reduce the vocabulary size
+tags_dtm <- DocumentTermMatrix(tags_corpus, 
+                              control = list(tolower = TRUE,
+                                             stopwords = TRUE,
+                                             removePunctuation = TRUE,
+                                             stripWhitespace = TRUE,
+                                             stemming = TRUE,
+                                             stemCompletion = TRUE))
+
+# check to see how many terms are in the document
+tags_dtm
+
+# some terms are very infrequent
+high_freq_terms <- findFreqTerms(tags_dtm, 5)
+
+# check again to see how many terms are left
+tags_dtm[ ,high_freq_terms]
+
+# save
+tags_dtm <- tags_dtm[ ,high_freq_terms]
+```
+
+## EXPLORATION
+
+```{r}
+# convert the dtm to a tidy data frame
+library(broom)
+library(tidytext)
+tags_df <- broom::tidy(tags_dtm)
+
+head(tags_df)
+
+tags_df %>% 
+    group_by(document,term) %>%
+    summarise(count = sum(count)) %>%
+    top_n(20, count) %>%
+    ungroup() %>% 
+    mutate(term = fct_reorder(term, count)) %>% 
+    ggplot(aes(x=term, y=count, fill=count))+
+     geom_col()+
+     facet_wrap(~document, scales = "free")+
+     coord_flip()
+
+```
+
